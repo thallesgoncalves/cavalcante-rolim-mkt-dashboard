@@ -1,10 +1,10 @@
 {
-  "generated_at": null,
+  "generated_at": "2026-08-05T08:25:38.153Z",
   "source": "instagram-graph-api",
   "configured": false,
   "account": "cavalcanteerolim",
   "followers_count": 0,
-  "days_back": 30,
+  "days_back": 90,
   "rows": [],
   "top_posts": []
 }
