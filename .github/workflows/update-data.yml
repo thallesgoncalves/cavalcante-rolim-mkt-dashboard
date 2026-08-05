@@ -1,0 +1,57 @@
+name: Update marketing data
+
+on:
+  schedule:
+    # Every 3 hours — Search Console has a natural ~2-3 day reporting lag and
+    # Instagram/Google Ads organic metrics don't move fast enough to justify
+    # the 15min cadence used by the ads dashboard.
+    - cron: "0 */3 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-data
+  cancel-in-progress: false
+
+jobs:
+  update-data:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Fetch Google Ads data
+        env:
+          GOOGLE_ADS_DEVELOPER_TOKEN: ${{ secrets.GOOGLE_ADS_DEVELOPER_TOKEN }}
+          GOOGLE_ADS_CLIENT_ID: ${{ secrets.GOOGLE_ADS_CLIENT_ID }}
+          GOOGLE_ADS_CLIENT_SECRET: ${{ secrets.GOOGLE_ADS_CLIENT_SECRET }}
+          GOOGLE_ADS_REFRESH_TOKEN: ${{ secrets.GOOGLE_ADS_REFRESH_TOKEN }}
+          GOOGLE_ADS_CUSTOMER_ID: ${{ secrets.GOOGLE_ADS_CUSTOMER_ID }}
+          GOOGLE_ADS_LOGIN_CUSTOMER_ID: ${{ secrets.GOOGLE_ADS_LOGIN_CUSTOMER_ID }}
+        run: node scripts/fetch_google_ads.js
+
+      - name: Fetch Search Console data
+        env:
+          GOOGLE_SC_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SC_SERVICE_ACCOUNT_JSON }}
+          SEARCH_CONSOLE_SITE_URL: ${{ secrets.SEARCH_CONSOLE_SITE_URL }}
+        run: node scripts/fetch_search_console.js
+
+      - name: Fetch Instagram organic data
+        env:
+          META_ORGANIC_ACCESS_TOKEN: ${{ secrets.META_ORGANIC_ACCESS_TOKEN }}
+          META_ACCESS_TOKEN: ${{ secrets.META_ACCESS_TOKEN }}
+          INSTAGRAM_BUSINESS_ID: ${{ secrets.INSTAGRAM_BUSINESS_ID }}
+        run: node scripts/fetch_instagram_organic.js
+
+      - name: Commit updated data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/google_ads.json data/search_console.json data/instagram_organic.json
+          git diff --quiet --cached || git commit -m "chore: atualizar dados de marketing"
+          git push
